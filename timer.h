@@ -18,9 +18,8 @@ class Timer {
     struct Payload {
         char id[15];    // auto generate
         int endTime;
-        // string data;
-        string topic;
-        string line;
+        string data;
+        // string ine;
         // int delay;
         // int startTime;
     };
@@ -47,9 +46,9 @@ public:
 
     void test();        // test
 
-    void startTimer(int delyaSecond, string topic, string line);
+    void startTimer(int delyaSecond, string data);
     void perTickBookKeeping();
-    void send(string topic, string line);
+    void send(string data);
 
     // void timerExpired(const char *id);
     // void deleteTimer(const char *id);

@@ -16,20 +16,19 @@ void Timer::test() {
     cout << "timer test" << endl;
 
 }
-void Timer::startTimer(int delyaSecond, string topic, string line) {
-    cout << "Timer::startTimer" << " " << delyaSecond << " " << topic << " / " << line << endl;
+void Timer::startTimer(int delyaSecond, string data) {
+    cout << "Timer::startTimer" << " " << delyaSecond << " " << data << endl;
 
     Payload payload = Payload();
 
     randomString(15, payload.id);
     payload.endTime = time(0) + delyaSecond;
-    payload.topic = topic;
-    payload.line = line;
+    payload.data = data;
 
 
     cout << payload.id << endl;
     cout << payload.endTime << endl;
-    cout << payload.topic << " / " << payload.line << endl;
+    cout << payload.data << endl;
 
     // ttlHash add
     if (ttlHash.find(payload.endTime) ==  ttlHash.end()) {
@@ -62,7 +61,7 @@ void Timer::perTickBookKeeping() {
                 // cout << "value " << itPayload->data << endl;
 
                 // send
-                send(itPayload->topic, itPayload->line);
+                send(itPayload->data);
 
                 // remove vector
                 itPayload = itTTL->second.erase(itPayload);
@@ -77,8 +76,8 @@ void Timer::perTickBookKeeping() {
 
 }
 
-void Timer::send(string topic, string line) {
-    cout << "DO payload!" << topic << " / " << line << endl;
+void Timer::send(string data) {
+    cout << "DO payload!" << data << endl;
 }
 
 // void Timer::timerExpired(const char *id) {
