@@ -19,6 +19,35 @@ delay를 지원하는 Redis module에서 딜레이 구현에 사용된 논문을
 $ make
 $ ./out
 ```
+## Result
+```
+ADD TEST
+addData :  hi hklee! 1 (5)
+addData :  hi hklee! 2 (5)
+addData :  hi hklee! 3 (7)
+addData :  hi hklee! 4 (9)
+
+Wait END
+
+>> TTL CHECK LOOP <<
+>> >> TIMEREXPIRED        kL1*kkR0i17a$u
+>> >> TIMEREXPIRED        1nP4uatqD2d64Q
+RUN! hi hklee! 1
+RUN! hi hklee! 2
+
+>> TTL CHECK LOOP <<
+>> >> TIMEREXPIRED        }_nsX#'G8Zt;Uc
+RUN! hi hklee! 3
+
+>> TTL CHECK LOOP <<
+>> >> TIMEREXPIRED        5r^!z{n)<\)&-;
+RUN! hi hklee! 4
+```
+
+
+# 남은 일들
+- [ ] valgrind로 memory leak 확인
+- [ ] 다양한 테스트 시나리오 작성해서 검증
 
 # Reference
 https://github.com/TamarLabs/ReDe  
