@@ -2,122 +2,125 @@
 
 Timer *g_timer = new Timer();
 
-Timer::Timer() {
-    cout << "Constructor" << endl;
+void randomString(int size, char* output) {
+    char src[size];
+    src[--size] = '\0';
 
-    // cout << test << endl;
+    while(--size > -1)
+        src[size] = (rand() % 94) + 32;
+
+    strcpy(output, src);
+}
+
+
+Timer::Timer() {
+    m_executeThread = new thread([&]() { Timer::execute(); } );
+    m_runThread = new thread([&]() { Timer::run(); } );
+
+    m_executeThread->detach();
+    m_runThread->detach();
 }
 
 Timer::~Timer() {
-    cout << "Destructor" << endl;
 }
 
-void Timer::test() {
-    cout << "timer test" << endl;
-
+void Timer::run() {
+    while(1) {
+        sleep_for(std::chrono::milliseconds(1000));     // test
+        g_timer->perTickBookKeeping();
+    }
 }
+
+int Timer::lastSize() {
+    return m_timerHash.size();
+}
+
 void Timer::startTimer(int delyaSecond, string data) {
-    cout << "Timer::startTimer" << " " << delyaSecond << " " << data << endl;
+    cout << "addData : " << " " << data << " (" << delyaSecond << ")" <<  endl;
 
-    Payload payload = Payload();
+    Payload *payload = new Payload();
 
-    randomString(15, payload.id);
-    payload.endTime = time(0) + delyaSecond;
-    payload.data = data;
+    randomString(15, payload->id);
+    payload->endTime = time(0) + delyaSecond;
+    payload->data = data;
 
+    // m_timerHash add
+    m_timerMutex.lock();
+    m_timerHash.insert(make_pair(payload->id, payload));
+    m_timerMutex.unlock();
 
-    cout << payload.id << endl;
-    cout << payload.endTime << endl;
-    cout << payload.data << endl;
+    // m_ttlHash
+    m_ttlMutex.lock();
+    if (m_ttlHash.find(payload->endTime) ==  m_ttlHash.end()) {
+        // no exist
+        vector<char *> idList;
+        idList.push_back(payload->id);
 
-    // ttlHash add
-    if (ttlHash.find(payload.endTime) ==  ttlHash.end()) {
-        // not found
-        vector<Payload> dataList;
-        dataList.push_back(payload);
-
-        ttlHash.insert(make_pair(payload.endTime, dataList));
+        m_ttlHash.insert(make_pair(payload->endTime, idList));
     }
     else {
-        // found
-        ttlHash.find(payload.endTime)->second.push_back(payload);
+        // exist
+        m_ttlHash.find(payload->endTime)->second.push_back(payload->id);
     }
+    m_ttlMutex.unlock();
 }
 
 // run
 void Timer::perTickBookKeeping() {
+    cout << endl;
+    cout << ">> TTL CHECK LOOP <<" << endl;
 
+    lock_guard<mutex> guard(m_ttlMutex);
     int curTime = time(0);
 
-    map<int, vector<Payload>>::iterator itTTL;
-    for (itTTL = ttlHash.begin(); itTTL != ttlHash.end();) {
-        cout << curTime - itTTL->first << endl;
+    map<int, vector<char *>>::iterator itTTL;
+    for (itTTL = m_ttlHash.begin(); itTTL != m_ttlHash.end();) {
         if (curTime > itTTL->first) {
-            cout << endl;
-            cout << "key " << itTTL->first << "(" << curTime - itTTL->first << ")" <<endl;
-            vector<Payload>::iterator itPayload;
-            // for (itPayload = itTTL->second.begin(); itPayload != itTTL->second.end(); itPayload++) {
-            for (itPayload = itTTL->second.begin(); itPayload != itTTL->second.end(); ) {
-                // cout << "value " << itPayload->data << endl;
-
-                // send
-                send(itPayload->data);
+            vector<char *>::iterator itId;
+            for (itId = itTTL->second.begin(); itId != itTTL->second.end(); ) {
+                timerExpired(*itId);
 
                 // remove vector
-                itPayload = itTTL->second.erase(itPayload);
+                itId = itTTL->second.erase(itId);
             }
 
-            itTTL = ttlHash.erase(itTTL);
+            itTTL = m_ttlHash.erase(itTTL);
         }
         else { 
             itTTL++;
         }
     }
-
 }
 
-void Timer::send(string data) {
-    cout << "DO payload!" << data << endl;
+void Timer::timerExpired(char *id) {
+    cout << ">> >> TIMEREXPIRED        " << id << endl;
+
+    unique_lock<mutex> lock(m_executeMutex);
+    m_executeQueue.push(id);
+
+    m_executeCV.notify_one();
 }
 
-// void Timer::timerExpired(const char *id) {
+void Timer::execute() {
+    while(1) {
+        unique_lock<mutex> lock(m_executeMutex);
+        if (m_executeQueue.size() == 0) {
+            // sleep
+            m_executeCV.wait(lock);
+        }
 
-// }
+        while(!m_executeQueue.empty()) {
 
-// void Timer::deleteTimer(const char *id) {
+            m_timerMutex.lock();
+            char *id = m_executeQueue.front();
+            cout << "RUN! " << m_timerHash[id]->data << endl;
 
-// }
+            delete m_timerHash[id];
+            m_timerHash.erase(id);
+            m_timerMutex.unlock();
 
-// ThreadsafeRedisQueue<std::pair<string, string>> g_threadsafequeue;
-// thread *redis_thread()
-// {
-
-//     return new thread([]()
-//                       {
-//                          int reconnect = 0;
-
-//                          while(reconnect<5){
-//                             try
-//                             {
-                     
-//                                 auto redis  = Redis("tcp://0.0.0.0:26379");
-                
-//                                 while (true)
-//                                 {
-//                                     g_threadsafequeue.mset(redis);
-//                                     std::this_thread::sleep_for(300ms);
-//                                 }
-//                             }
-//                             catch (const exception &e)
-//                             {
-//                                 cout << currentDateTime() << e.what() << endl;
-//                                 reconnect ++ ;
-//                                 cout << currentDateTime()<< "reconnect:"<< reconnect << endl;
-                        
-//                             }
-//                          }
-//                          exit(0);
-
-                          
-//                       });
-// };
+            // remove vector
+            m_executeQueue.pop();
+        }
+    }
+}
