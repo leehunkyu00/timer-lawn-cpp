@@ -26,8 +26,12 @@ Timer::~Timer() {
 
 void Timer::run() {
     while(1) {
-        sleep_for(std::chrono::milliseconds(1000));     // test
-        g_timer->perTickBookKeeping();
+        if (lastSize() == 0) {
+            unique_lock<mutex> lock(m_runMutex);
+            m_runCV.wait(lock);
+        }
+
+        perTickBookKeeping();
     }
 }
 
@@ -49,6 +53,9 @@ void Timer::startTimer(int delyaSecond, string data) {
     m_timerHash.insert(make_pair(payload->id, payload));
     m_timerMutex.unlock();
 
+    // wake up RUN Thread
+    m_runCV.notify_one();
+
     // m_ttlHash
     m_ttlMutex.lock();
     if (m_ttlHash.find(payload->endTime) ==  m_ttlHash.end()) {
@@ -67,9 +74,6 @@ void Timer::startTimer(int delyaSecond, string data) {
 
 // run
 void Timer::perTickBookKeeping() {
-    cout << endl;
-    cout << ">> TTL CHECK LOOP <<" << endl;
-
     lock_guard<mutex> guard(m_ttlMutex);
     int curTime = time(0);
 

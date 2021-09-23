@@ -30,6 +30,8 @@ private:
     mutex m_ttlMutex;
 
 	thread *m_runThread;
+    mutex m_runMutex;
+    condition_variable m_runCV;
 
     // execute
     queue<char *> m_executeQueue;
