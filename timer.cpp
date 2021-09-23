@@ -7,7 +7,7 @@ void randomString(int size, char* output) {
     src[--size] = '\0';
 
     while(--size > -1)
-        src[size] = (rand() % 94) + 32;
+        src[size] = (rand() % 25) + 65;
 
     strcpy(output, src);
 }
